@@ -13,13 +13,21 @@ GLdouble vlak[4] = { 0,1,0,1 };
 
 float offsetX = 0, offsetY = 0, offsetZ = 0; // Offset dient om structuren te bewegen
 char projectie = 'o';
-float draai = 0, draaisnelheid = 0.25, hoek = 0;
+float draai = 0, draaisnelheid = 0.25, hoek = 0, wiebelhoek = 0;
 
 int cabines = 6;
 int rads = 1;
 int draadmodel = 0;
 
-//GLfloat ctrPt[6][4] = 0;
+GLfloat ctrPt[6][4][3] =
+{
+   { {0.0, 0.5, 0.00}, {0.04, 0.5, 0.00}, {0.08, 0.5, 0.00}, {0.12, 0.5, 0.00}},
+   { {0.0, 0.0, 0.04}, {0.04, 0.0, 0.04}, {0.08, 0.0, 0.04}, {0.12, 0.5, 0.04}},
+   { {0.0, 0.0, 0.08}, {0.04, 0.0, 0.08}, {0.08, 0.0, 0.08}, {0.12, 0.5, 0.08}},
+   { {0.0, 0.0, 0.12}, {0.04, 0.0, 0.12}, {0.08, 0.0, 0.12}, {0.12, 0.5, 0.12}},
+   { {0.0, 0.0, 0.18}, {0.04, 0.0, 0.18}, {0.08, 0.0, 0.18}, {0.12, 0.5, 0.18}},
+   { {0.0, 0.5, 0.20}, {0.04, 0.5, 0.20}, {0.08, 0.5, 0.20}, {0.12, 0.5, 0.20}}
+};
 
 const GLfloat KUIPJE_GRIJS_AMBI[] = { 0.22,0.22,0.22 };
 const GLfloat KUIPJE_GRIJS_DIFF[] = { 0.33,0.33,0.33 };
@@ -74,7 +82,19 @@ void raam(GLint n_w, GLint n_h)
 
 void kuipje(GLfloat x, GLfloat y, GLfloat z)
 {
-	z -= 0.1;
+	glPushMatrix();
+	glColor3f(1, 0, 0);
+		glTranslatef(x + 0.4 * sin(wiebelhoek * 3.14 / 180), y - 0.4 * cos(wiebelhoek * 3.14 / 180), 2.85); 
+		glRotated(wiebelhoek, 0, 0, 1);
+		glMap2f(GL_MAP2_VERTEX_3, 0, 1, 3, 4, 0, 1, 12, 6, &ctrPt[0][0][0]); // 
+		glEnable(GL_MAP2_VERTEX_3);
+		glMapGrid2f(20, 0.0, 1.0, 20, 0.0, 1.0);
+		glEvalMesh2(GL_LINE, 0, 20, 0, 20);
+		glScaled(-2, 2, 2);
+		
+		glDisable(GL_MAP2_VERTEX_3);
+		glPopMatrix();
+
 }
 
 void steunbalken(float offsetZ)
@@ -207,6 +227,7 @@ void dwarsbalken(float offsetz)
 		}
 		gluCylinder(dwarsbalk, 0.05, 0.05, 1.6, 8, 8);
 		glPopMatrix();
+		//kuipje(2.5 + 1.6 * sin(i * 3.14 / 180), 1.2 + 1.6 * cos(i * 3.14 / 180), 0.95);
 	}
 	gluDeleteQuadric(dwarsbalk);
 
@@ -282,6 +303,9 @@ void displayFcn(void)
 
 	// Elementen oproepen die getekend moeten worden
 	assen();
+	kuipje(2, 2, 4);
+	
+
 	for (int i = 0; i > (-rads); i--)
 	{
 		as(4 * i);
