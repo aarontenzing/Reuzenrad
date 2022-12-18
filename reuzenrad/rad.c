@@ -4,31 +4,39 @@
 #include <stdio.h>
 #include <math.h>
 
-GLint winWidth = 800, winHeight = 800; /* 800*800 pixels */
+// Tekenen
+GLint winWidth = 1000, winHeight = 1000; /* 800*800 pixels */
 int xmax = 5, ymax = 5, xmin = -5, ymin = -5;
-
 float near = 0.5, far = 400;
 GLdouble xc = 4, yc = 4, zc = 5;
 GLdouble vlak[4] = { 0,1,0,1 };
+char projectie = 'o';
 
 float offsetX = 0, offsetY = 0, offsetZ = 0; // Offset dient om structuren te bewegen
-char projectie = 'o';
-float draai = 0, draaisnelheid = 0.25, hoek = 0, wiebelhoek = 0;
-
 int cabines = 6;
 int rads = 1;
 int draadmodel = 0;
+int eenvoudig = 1;
+int toonctp = 0;
 
+// anitmatie
+float draai = 0;
+float draaisnelheid = 0.25;
+float hoek = 0;
+float wiebelhoek = 0;
+
+// Afmetingen
 GLfloat ctrPt[6][4][3] =
 {
-   { {0.0, 0.5, 0.00}, {0.04, 0.5, 0.00}, {0.08, 0.5, 0.00}, {0.12, 0.5, 0.00}},
-   { {0.0, 0.0, 0.04}, {0.04, 0.0, 0.04}, {0.08, 0.0, 0.04}, {0.12, 0.5, 0.04}},
-   { {0.0, 0.0, 0.08}, {0.04, 0.0, 0.08}, {0.08, 0.0, 0.08}, {0.12, 0.5, 0.08}},
-   { {0.0, 0.0, 0.12}, {0.04, 0.0, 0.12}, {0.08, 0.0, 0.12}, {0.12, 0.5, 0.12}},
-   { {0.0, 0.0, 0.18}, {0.04, 0.0, 0.18}, {0.08, 0.0, 0.18}, {0.12, 0.5, 0.18}},
-   { {0.0, 0.5, 0.20}, {0.04, 0.5, 0.20}, {0.08, 0.5, 0.20}, {0.12, 0.5, 0.20}}
+   { {0.0, 0.1, 0.00}, {0.1, 0.1, 0.00}, {0.08, 0.1, 0.00}, {0.12, 0.1, 0.00}},
+   { {0.0, 0.0, 0.1}, {0.1, 0.0, 0.1}, {0.08, 0.0, 0.1}, {0.12, 0.1, 0.1}},
+   { {0.0, 0.0, 0.08}, {0.1, 0.0, 0.08}, {0.08, 0.0, 0.08}, {0.12, 0.1, 0.08}},
+   { {0.0, 0.0, 0.12}, {0.1, 0.0, 0.12}, {0.08, 0.0, 0.12}, {0.12, 0.1, 0.12}},
+   { {0.0, 0.0, 0.18}, {0.1, 0.0, 0.18}, {0.08, 0.0, 0.18}, {0.12, 0.1, 0.18}},
+   { {0.0, 0.1, 0.20}, {0.1, 0.1, 0.20}, {0.08, 0.1, 0.20}, {0.12, 0.1, 0.20}}
 };
 
+// Materiaal
 const GLfloat KUIPJE_GRIJS_AMBI[] = { 0.22,0.22,0.22 };
 const GLfloat KUIPJE_GRIJS_DIFF[] = { 0.33,0.33,0.33 };
 const GLfloat KUIPJE_GRIJS_SPEC[] = { 0.11,0.11,0.11 };
@@ -83,18 +91,90 @@ void raam(GLint n_w, GLint n_h)
 void kuipje(GLfloat x, GLfloat y, GLfloat z)
 {
 	glPushMatrix();
-	glColor3f(1, 0, 0);
-		glTranslatef(x + 0.4 * sin(wiebelhoek * 3.14 / 180), y - 0.4 * cos(wiebelhoek * 3.14 / 180), 2.85); 
-		glRotated(wiebelhoek, 0, 0, 1);
-		glMap2f(GL_MAP2_VERTEX_3, 0, 1, 3, 4, 0, 1, 12, 6, &ctrPt[0][0][0]); // 
-		glEnable(GL_MAP2_VERTEX_3);
-		glMapGrid2f(20, 0.0, 1.0, 20, 0.0, 1.0);
-		glEvalMesh2(GL_LINE, 0, 20, 0, 20);
-		glScaled(-2, 2, 2);
-		
-		glDisable(GL_MAP2_VERTEX_3);
-		glPopMatrix();
 
+	glColor3f(1, 0, 0);
+	glTranslatef(x + 0.4 * sin(wiebelhoek * 3.14 / 180), y - 0.4 * cos(wiebelhoek * 3.14 / 180), 2.85);
+	glRotated(wiebelhoek, 0, 0, 1);
+
+	glMap2f(GL_MAP2_VERTEX_3, 0, 1, 3, 4, 0, 1, 12, 6, &ctrPt[0][0][0]); // uMin, uMax, uStap, nuPt, vMin, vMax, nvPt, ctrlPt
+	glEnable(GL_MAP2_VERTEX_3);
+	glMapGrid2f(20, 0.0, 1.0, 20, 0.0, 1.0); // nu en nv uniform verdeelde parameter waarden --> MapGrid en EvalMesh
+
+	for (int i = 0; i < 2; i++)
+	{
+		if (draadmodel) // Toont MESH lijnen
+		{
+			if (eenvoudig)
+			{
+				glEvalMesh2(GL_LINE, 0, 20, 0, 20); // Korte manier gebruiken d.m.v. EVALMESH slechts 1 lijn
+			}
+			else
+			{
+				for (int j = 0; j < 6; j++)
+				{
+					glBegin(GL_LINE_STRIP);
+					for (int i = 0; i < 4; i++) {
+						glVertex3fv(ctrPt[j][i]);
+					}
+					glEnd();
+				}
+				for (int k = 0; k < 4; k++)
+				{
+					glBegin(GL_LINE_STRIP);
+					for (int j = 0; j < 6; j++) {
+						glVertex3fv(ctrPt[j][i]);
+					}
+					glEnd();
+
+				}
+			}
+		}
+		else // Toont oppervlak filled
+		{
+			glEvalMesh2(GL_FILL, 0, 20, 0, 20);
+		}
+		if (toonctp)
+		{
+			glPointSize(10);
+			glBegin(GL_POINTS);
+			glColor3f(0, 1, 0);
+			for (int j = 0; j < 4; j++)
+			{
+				for (int k = 0; k < 6; k++)
+				{
+					glVertex3fv(ctrPt[j][i]);
+				}
+			}
+			glEnd();
+		}
+
+		glScaled(-0.1, 0.1, 0.1); // Kuip spiegelen
+	}
+	glDisable(GL_MAP2_VERTEX_3);
+
+	glPopMatrix();
+
+}
+
+void bevestiging_kuipje(GLfloat x, GLfloat y, GLfloat z)
+{
+	GLUquadricObj* bevestiging;
+	bevestiging = gluNewQuadric();
+
+	glPushMatrix();
+	glTranslatef(x, y, z);
+	glRotatef(90, 1, 0, 0);
+	if (draadmodel)
+	{
+		gluQuadricDrawStyle(bevestiging, GLU_LINE);
+	}
+	else
+	{
+		gluQuadricDrawStyle(bevestiging, GLU_FILL);
+	}
+	gluCylinder(bevestiging, 0.02, 0.02, 0.4, 8, 8);
+	glPopMatrix();
+	gluDeleteQuadric(bevestiging);
 }
 
 void steunbalken(float offsetZ)
@@ -286,6 +366,7 @@ void toetsen(unsigned char key, int x, int y)
 	case 'g': draai = !draai; if (draai) { glutIdleFunc(rotate_cylinder); }
 			else { glutIdleFunc(NULL); } break;
 	case 'l': draadmodel = !draadmodel; break;
+	case 'k': toonctp = !toonctp; break;
 	case 'q': exit(0); break;
 
 	}
@@ -304,7 +385,7 @@ void displayFcn(void)
 	// Elementen oproepen die getekend moeten worden
 	assen();
 	kuipje(2, 2, 4);
-	
+
 
 	for (int i = 0; i > (-rads); i--)
 	{
@@ -313,12 +394,13 @@ void displayFcn(void)
 		spaken(4 * i);
 		steunbalken(4 * i);
 		dwarsbalken(4 * i);
+		bevestiging_kuipje(0, 0, 0);
 	}
 
 	glPushMatrix();//clipping plane
-		glTranslatef(0.0, -0.5, 0.0);
-		glClipPlane(GL_CLIP_PLANE0, vlak);
-		glEnable(GL_CLIP_PLANE0);
+	glTranslatef(0.0, -0.5, 0.0);
+	glClipPlane(GL_CLIP_PLANE0, vlak);
+	glEnable(GL_CLIP_PLANE0);
 	glPopMatrix();
 
 
@@ -328,7 +410,7 @@ void displayFcn(void)
 
 int main(int argc, char** argv)
 {
-	if (argc == 2 ) {
+	if (argc == 2) {
 		projectie = argv[1][0];
 	}
 	if (argc == 3) {
