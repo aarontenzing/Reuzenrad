@@ -1,4 +1,4 @@
-﻿/* Reuzenrad made by Aaron Van Campenhout Start date: 7/12/22 */
+/* Reuzenrad made by Aaron Van Campenhout Start date: 7/12/22 */
 
 #include <gl/glut.h>
 #include <stdio.h>
@@ -13,6 +13,7 @@ GLdouble vlak[4] = { 0,1,0,1 };
 char projectie = 'o';
 
 float offsetX = 0, offsetY = 0, offsetZ = 0; // Offset dient om structuren te bewegen
+
 int cabines = 6;
 int rads = 1;
 int draadmodel = 0;
@@ -35,6 +36,9 @@ GLfloat ctrPt[6][4][3] =
    { {0.0, 0.0, 0.18}, {0.1, 0.0, 0.18}, {0.08, 0.0, 0.18}, {0.12, 0.1, 0.18}},
    { {0.0, 0.1, 0.20}, {0.1, 0.1, 0.20}, {0.08, 0.1, 0.20}, {0.12, 0.1, 0.20}}
 };
+
+GLUnurbsObj* curNaam;
+GLfloat dakVreemdevorm[4][4][3];    //b-spline
 
 // Materiaal
 const GLfloat KUIPJE_GRIJS_AMBI[] = { 0.22,0.22,0.22 };
@@ -135,10 +139,10 @@ void kuipje(GLfloat x, GLfloat y, GLfloat z)
 		}
 		if (toonctp)
 		{
-			glPointSize(10);
+			glPointSize(4);
 			glBegin(GL_POINTS);
 			glColor3f(0, 1, 0);
-			for (int j = 0; j < 4; j++)
+			for (int j = 0; j < 4; j++) // breedte is 4 en lengte 6 
 			{
 				for (int k = 0; k < 6; k++)
 				{
@@ -148,8 +152,9 @@ void kuipje(GLfloat x, GLfloat y, GLfloat z)
 			glEnd();
 		}
 
-		glScaled(-0.1, 0.1, 0.1); // Kuip spiegelen
+		glScaled(-1, 1, 1); // Kuip spiegelen
 	}
+
 	glDisable(GL_MAP2_VERTEX_3);
 
 	glPopMatrix();
@@ -175,6 +180,40 @@ void bevestiging_kuipje(GLfloat x, GLfloat y, GLfloat z)
 	gluCylinder(bevestiging, 0.02, 0.02, 0.4, 8, 8);
 	glPopMatrix();
 	gluDeleteQuadric(bevestiging);
+}
+
+void dak(GLfloat x, GLfloat y, GLfloat z)
+{
+	for (int i = 0; i < 4; i++) // Dak genereren B-spline
+	{
+		for (int j = 0; j < 4; j++) {
+			dakVreemdevorm[j][i][0] = i * (cos((30 * j) * 3.14 / 180)); //X (i*cos(j*22.5))/10;
+			dakVreemdevorm[j][i][1] = i * 0.8;  //Y (i*1)/10;
+			dakVreemdevorm[j][i][2] = i * (sin((30 * j) * 3.14 / 180)); //Z (i*sin(j*22.5))/10;
+		}
+	}
+
+
+	GLfloat knots[8] = { 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 };
+	for (int i = 0; i < 4; i++)
+	{
+		glPushMatrix();
+		glTranslatef(x, y, z);
+		glRotatef(180, 0., 0., 1.);
+		glRotated(wiebelhoek, 0, 0, 1);
+		glRotatef(i * 90, 0., 1., 0.);
+	}
+	gluBeginSurface(curNaam);
+	gluNurbsSurface(curNaam, 8, knots, 8, knots, 4 * 3, 3, &dakVreemdevorm[0][0][0], 4, 4, GL_MAP2_VERTEX_3);
+	gluEndSurface(curNaam);
+
+}
+
+void bakje(GLfloat x, GLfloat y, GLfloat z)
+{
+	bevestiging_kuipje(x, y, z);
+	dak(x, y, z);
+	kuipje(x, y, z);
 }
 
 void steunbalken(float offsetZ)
