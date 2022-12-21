@@ -19,6 +19,7 @@ int rads = 1;
 int draadmodel = 0;
 int eenvoudig = 1;
 int toonctp = 0;
+int teken = 0;
 
 // anitmatie
 float draai = 0;
@@ -37,8 +38,8 @@ GLfloat ctrPt[6][4][3] =
    { {0.0, 0.1, 0.20}, {0.1, 0.1, 0.20}, {0.08, 0.1, 0.20}, {0.12, 0.1, 0.20}}
 };
 
-GLUnurbsObj* curNaam;
-GLfloat dakVreemdevorm[4][4][3];    //b-spline
+GLUnurbsObj* dakelement;
+GLfloat bsplineDak[4][4][3];    //b-spline
 
 // Materiaal
 const GLfloat KUIPJE_GRIJS_AMBI[] = { 0.22,0.22,0.22 };
@@ -92,83 +93,141 @@ void raam(GLint n_w, GLint n_h)
 	glViewport(0, 0, n_w, n_h);
 }
 
-void kuipje(GLfloat x, GLfloat y, GLfloat z)
+void kuip(GLfloat x, GLfloat y, GLfloat z)
 {
+	// Bezier kuip
 	glPushMatrix();
 
-	glColor3f(1, 0, 0);
-	glTranslatef(x + 0.4 * sin(wiebelhoek * 3.14 / 180), y - 0.4 * cos(wiebelhoek * 3.14 / 180), 2.85);
+	glTranslatef(x + 3.1, y + 3.2 , z + 6.79); 
 	glRotated(wiebelhoek, 0, 0, 1);
+	glRotated(90, 0, 1, 0);
+	glScaled(5, 5, 5);
 
-	glMap2f(GL_MAP2_VERTEX_3, 0, 1, 3, 4, 0, 1, 12, 6, &ctrPt[0][0][0]); // uMin, uMax, uStap, nuPt, vMin, vMax, nvPt, ctrlPt
-	glEnable(GL_MAP2_VERTEX_3);
-	glMapGrid2f(20, 0.0, 1.0, 20, 0.0, 1.0); // nu en nv uniform verdeelde parameter waarden --> MapGrid en EvalMesh
+	glMap2f(GL_MAP2_VERTEX_3, 0, 1, 3, 4, 0, 1, 12, 6, &ctrPt[0][0][0]); // laat toe onze Bezier curve te evalueren
+	glEnable(GL_MAP2_VERTEX_3); // Genereren bezier curve
+
+	glMapGrid2f(20, 0, 1, 20, 0, 1);
 
 	for (int i = 0; i < 2; i++)
 	{
-		if (draadmodel) // Toont MESH lijnen
+		if (draadmodel)
 		{
-			if (eenvoudig)
-			{
-				glEvalMesh2(GL_LINE, 0, 20, 0, 20); // Korte manier gebruiken d.m.v. EVALMESH slechts 1 lijn
-			}
-			else
-			{
-				for (int j = 0; j < 6; j++)
-				{
-					glBegin(GL_LINE_STRIP);
-					for (int i = 0; i < 4; i++) {
-						glVertex3fv(ctrPt[j][i]);
-					}
-					glEnd();
-				}
-				for (int k = 0; k < 4; k++)
-				{
-					glBegin(GL_LINE_STRIP);
-					for (int j = 0; j < 6; j++) {
-						glVertex3fv(ctrPt[j][i]);
-					}
-					glEnd();
-
-				}
-			}
+			glEvalMesh2(GL_LINE, 0, 20, 0, 20);
 		}
-		else // Toont oppervlak filled
+		else
 		{
 			glEvalMesh2(GL_FILL, 0, 20, 0, 20);
 		}
 		if (toonctp)
 		{
-			glPointSize(4);
+			glPointSize(10);
 			glBegin(GL_POINTS);
-			glColor3f(0, 1, 0);
-			for (int j = 0; j < 4; j++) // breedte is 4 en lengte 6 
+			glColor3f(0, 1, 1);
+			for (int j = 0; j < 4; j++)
 			{
 				for (int k = 0; k < 6; k++)
 				{
-					glVertex3fv(ctrPt[j][i]);
+					glVertex3fv(ctrPt[j][k]);
 				}
 			}
 			glEnd();
+			glColor3f(0, 0, 1);
 		}
 
-		glScaled(-1, 1, 1); // Kuip spiegelen
+
+		glScaled(-1, 1, 1); // halve kuip spiegelen
 	}
-
 	glDisable(GL_MAP2_VERTEX_3);
-
 	glPopMatrix();
-
 }
 
-void bevestiging_kuipje(GLfloat x, GLfloat y, GLfloat z)
+
+void bevestiging(GLfloat x, GLfloat y, GLfloat z)
 {
+
+	//Staven tekenen
+
+	GLUquadricObj* staaf1;
+	staaf1 = gluNewQuadric();
+
+	glColor3f(1, 0, 0);
+
+	glPushMatrix();
+	glTranslatef(x+0.5 +2.6 ,y+1+2.7,z-0.075+6.29); // y = 2.7 ; z = 6.29 ; x = 2.6
+	glRotated(90, -1, 0, 0);
+	if (draadmodel)
+	{
+		gluQuadricDrawStyle(staaf1, GLU_LINE);
+	}
+	else 
+	{
+		gluQuadricDrawStyle(staaf1, GLU_FILL);
+	}
+	gluCylinder(staaf1, 0.02, 0.02, 0.6, 8, 8);
+	glPopMatrix();
+	gluDeleteQuadric(staaf1);
+
+	GLUquadricObj* staaf2;
+	staaf2 = gluNewQuadric();
+
+	glPushMatrix();
+	glTranslatef(x+1.475+2.6,y+1+2.7,z-0.075+6.29);  // y = 2.7 ; z = 6.29 ; x = 2.6
+	glRotated(90, -1, 0, 0);
+	if (draadmodel)
+	{
+		gluQuadricDrawStyle(staaf2, GLU_LINE);
+	}
+	else
+	{
+		gluQuadricDrawStyle(staaf2, GLU_FILL);
+	}
+	gluCylinder(staaf2, 0.02, 0.02, 0.6, 8, 8);
+	glPopMatrix();
+	gluDeleteQuadric(staaf2);
+
+	GLUquadricObj* staaf3;
+	staaf3 = gluNewQuadric();
+
+	glPushMatrix();
+	glTranslatef(x+1.475+2.6,y+1+2.7,z+1.075+6.29); // y = 2.7 ; z = 6.29 ; x = 2.6 
+	glRotated(90, -1, 0, 0);
+	if (draadmodel)
+	{
+		gluQuadricDrawStyle(staaf3, GLU_LINE);
+	}
+	else
+	{
+		gluQuadricDrawStyle(staaf3, GLU_FILL);
+	}
+	gluCylinder(staaf3, 0.02, 0.02, 0.6, 8, 8);
+	glPopMatrix();
+	gluDeleteQuadric(staaf3);
+
+	GLUquadricObj* staaf4;
+	staaf4 = gluNewQuadric();
+
+	glPushMatrix();
+	glTranslatef(x+0.5+2.6,y+1+2.7, z+1.075+6.29); // y = 2.7 ; z = 6.29 ; x = 2.6
+	glRotated(90, -1, 0, 0);
+	if (draadmodel)
+	{
+		gluQuadricDrawStyle(staaf4, GLU_LINE);
+	}
+	else
+	{
+		gluQuadricDrawStyle(staaf4, GLU_FILL);
+	}
+	gluCylinder(staaf4, 0.02, 0.02, 0.6, 8, 8);
+	glPopMatrix();
+	gluDeleteQuadric(staaf4);
+
 	GLUquadricObj* bevestiging;
 	bevestiging = gluNewQuadric();
 
 	glPushMatrix();
-	glTranslatef(x, y, z);
-	glRotatef(90, 1, 0, 0);
+	glColor3f(1, 0, 0);
+	glTranslatef(x + 0.99 + 2.6, y + 2.08 +2.7, z + 0.49+6.29); // y = 2.7 ; z = 6.29 ; x = 2.6
+	glRotated(90, -1, 0, 0);
 	if (draadmodel)
 	{
 		gluQuadricDrawStyle(bevestiging, GLU_LINE);
@@ -177,44 +236,85 @@ void bevestiging_kuipje(GLfloat x, GLfloat y, GLfloat z)
 	{
 		gluQuadricDrawStyle(bevestiging, GLU_FILL);
 	}
-	gluCylinder(bevestiging, 0.02, 0.02, 0.4, 8, 8);
+	gluCylinder(bevestiging, 0.02, 0.02, 0.6, 8, 8);
 	glPopMatrix();
 	gluDeleteQuadric(bevestiging);
+
 }
 
-void dak(GLfloat x, GLfloat y, GLfloat z)
+
+void dak(void)
 {
-	for (int i = 0; i < 4; i++) // Dak genereren B-spline
+	// Dak genereren B-spline
+	for (int i = 0; i < 4; i++) 
 	{
 		for (int j = 0; j < 4; j++) {
-			dakVreemdevorm[j][i][0] = i * (cos((30 * j) * 3.14 / 180)); //X (i*cos(j*22.5))/10;
-			dakVreemdevorm[j][i][1] = i * 0.8;  //Y (i*1)/10;
-			dakVreemdevorm[j][i][2] = i * (sin((30 * j) * 3.14 / 180)); //Z (i*sin(j*22.5))/10;
+			bsplineDak[j][i][0] = i * (cos((30 * j) * 3.14 / 180)) * 0.075; 
+			bsplineDak[j][i][1] = i * 0.8 * 0.075;  
+			bsplineDak[j][i][2] = i * (sin((30 * j) * 3.14 / 180))* 0.075; 
 		}
 	}
 
 
 	GLfloat knots[8] = { 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 };
-	for (int i = 0; i < 4; i++)
+	for (int k= 0; k < 4; k++)
 	{
 		glPushMatrix();
-		glTranslatef(x, y, z);
-		glRotatef(180, 0., 0., 1.);
+		glColor3b(0,0,1);
+		
+		glScalef(3.8, 3, 3.8);
+		glTranslatef(0.26,0.7, 0.13); 
+		dakelement = gluNewNurbsRenderer();
+		glRotatef(45, 0, 1, 0);
+		glRotatef(180, 0, 0, 1);
 		glRotated(wiebelhoek, 0, 0, 1);
-		glRotatef(i * 90, 0., 1., 0.);
+		glRotatef(k * 90, 0., 1., 0.);
+
+		if (toonctp)
+		{
+			glPointSize(8.0);
+			glColor3f(0, 1, 1);
+			glBegin(GL_POINTS);
+			for (int i = 0; i < 4; i++)
+			{
+				for (int j = 0; j < 4; j++) {
+					glVertex3fv(bsplineDak[i][j]);
+				}
+			}
+			glColor3f(0, 0, 1);
+			glEnd();
+		}
+		gluBeginSurface(dakelement);
+		gluNurbsSurface(dakelement, 8, knots, 8, knots, 4 * 3, 3, &bsplineDak[0][0][0], 4, 4, GL_MAP2_VERTEX_3);
+		gluEndSurface(dakelement);
+
+		gluDeleteNurbsRenderer(dakelement);
+
+		glPopMatrix();
 	}
-	gluBeginSurface(curNaam);
-	gluNurbsSurface(curNaam, 8, knots, 8, knots, 4 * 3, 3, &dakVreemdevorm[0][0][0], 4, 4, GL_MAP2_VERTEX_3);
-	gluEndSurface(curNaam);
 
 }
 
-void bakje(GLfloat x, GLfloat y, GLfloat z)
+void cabine(GLfloat x, GLfloat y, GLfloat z) // samenstellen van cabine met verschillende onderdelen
 {
-	bevestiging_kuipje(x, y, z);
-	dak(x, y, z);
-	kuipje(x, y, z);
+	kuip(x,y,z);
+	bevestiging(x, y, z);
+	glPushMatrix();
+		glTranslatef(2.6+x,2.7+y,6.29+z); // y = 2.7 ; z = 6.29 ; x = 2.6
+		dak();
+	glPopMatrix();
 }
+
+void tekencabine(GLfloat x, GLfloat y, GLfloat z) // Scale/translate cabine naar juiste formaat 
+{
+
+	glPushMatrix();
+		glColor3f(0, 1, 1);
+		glScalef(0.45, 0.45, 0.45);
+		cabine(2.6 + x, 2.7 + y, 6.29 + z);
+	glPopMatrix();
+}
+
 
 void steunbalken(float offsetZ)
 {
@@ -346,7 +446,9 @@ void dwarsbalken(float offsetz)
 		}
 		gluCylinder(dwarsbalk, 0.05, 0.05, 1.6, 8, 8);
 		glPopMatrix();
-		//kuipje(2.5 + 1.6 * sin(i * 3.14 / 180), 1.2 + 1.6 * cos(i * 3.14 / 180), 0.95);
+
+		tekencabine(0.500000 + 3.599999 * sin(i * 3.14 / 180), -4.4 + 3.599999 * cos(i * 3.14 / 180), -6.399995 + (offsetz*2.2));
+		printf("offset:%f\n", offsetX);
 	}
 	gluDeleteQuadric(dwarsbalk);
 
@@ -394,18 +496,19 @@ void toetsen(unsigned char key, int x, int y)
 	case 'Y': yc--; break;
 	case 'Z': zc--; break;
 
-	case '1': offsetX = offsetX + 0.01; printf("offset=%f\n", offsetX); break;
-	case '4': offsetX = offsetX - 0.01; printf("offset=%f\n", offsetX); break;
-	case '2': offsetY = offsetY + 0.01; printf("offset=%f\n", offsetY); break;
-	case '5': offsetY = offsetY - 0.01; printf("offset=%f\n", offsetY); break;
-	case '3': offsetZ = offsetZ + 0.01; printf("offset=%f\n", offsetZ); break;
-	case '6': offsetZ = offsetZ - 0.01; printf("offset=%f\n", offsetZ); break;
+	case '1': offsetX = offsetX + 0.1; printf("offset=%f\n", offsetX); break;
+	case '4': offsetX = offsetX - 0.1; printf("offset=%f\n", offsetX); break;
+	case '2': offsetY = offsetY + 0.1; printf("offset=%f\n", offsetY); break;
+	case '5': offsetY = offsetY - 0.1; printf("offset=%f\n", offsetY); break;
+	case '3': offsetZ = offsetZ + 0.1; printf("offset=%f\n", offsetZ); break;
+	case '6': offsetZ = offsetZ - 0.1; printf("offset=%f\n", offsetZ); break;
 
 	case 'n': rads++; break;
 	case 'g': draai = !draai; if (draai) { glutIdleFunc(rotate_cylinder); }
 			else { glutIdleFunc(NULL); } break;
+	case 't': teken = !teken; break;
 	case 'l': draadmodel = !draadmodel; break;
-	case 'k': toonctp = !toonctp; break;
+	case 'k': toonctp = !toonctp; break; // y = 2.7 ; z = 6.29 ; x = 2.6
 	case 'q': exit(0); break;
 
 	}
@@ -413,6 +516,7 @@ void toetsen(unsigned char key, int x, int y)
 	glutPostRedisplay();
 
 }
+
 
 void displayFcn(void)
 {
@@ -423,25 +527,24 @@ void displayFcn(void)
 
 	// Elementen oproepen die getekend moeten worden
 	assen();
-	kuipje(2, 2, 4);
 
-
-	for (int i = 0; i > (-rads); i--)
+	if (teken)
 	{
-		as(4 * i);
-		as_cylinder(4 * i);
-		spaken(4 * i);
-		steunbalken(4 * i);
-		dwarsbalken(4 * i);
-		bevestiging_kuipje(0, 0, 0);
+		for (int i = 0; i > (-rads); i--)
+		{
+			as(4 * i);
+			as_cylinder(4 * i);
+			spaken(4 * i);
+			steunbalken(4 * i);
+			dwarsbalken(4 * i);
+		}
 	}
-
+	
 	glPushMatrix();//clipping plane
 	glTranslatef(0.0, -0.5, 0.0);
 	glClipPlane(GL_CLIP_PLANE0, vlak);
 	glEnable(GL_CLIP_PLANE0);
 	glPopMatrix();
-
 
 	glutSwapBuffers(); // één buffer om te tekenen en andere doet berekeningen
 	glFlush();
