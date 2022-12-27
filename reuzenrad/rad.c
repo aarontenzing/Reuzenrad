@@ -69,6 +69,8 @@ const GLfloat DAK_LILA_AMBI[] = { 0.45,0.15,0.75, 1 };
 const GLfloat DAK_LILA_DIFF[] = { 0.55,0.15,0.65, 1 };
 const GLfloat DAK_LILA_SPEC[] = { 0.35,0.15,0.85, 1 };
 
+
+
 // Licht en kleuren
 
 const GLfloat LICHTPOS1[] = { 0.0, 0.0, 0.0, 0.0 };	// Achteraan reuzenrad (oorsprong)
@@ -85,14 +87,18 @@ GLfloat ROODBLAUW[] = { 0.9,0.0,0.9,1.0 };
 GLfloat GROEN[] = { 0.0,1.0,0.0,1.0 };
 GLfloat GRBLAUW[] = { 0.0,0.8,0.9,1.0 };
 GLfloat ROGBRL[] = { 0.4,0.6,0.8,1.0 };
-GLfloat direc[] = { -1.0,0.0,0.0 };
-GLfloat shini = 5.0;
+GLfloat oranje[] = {1, 0.9 ,0.4,1};
+GLfloat mistkleur[4] = { 0.6, 0.5, 0.4, 1 };
+GLfloat shini = 10;
 GLfloat expo = 20.0;
 GLfloat lichthoek = 45;
+const GLfloat direc[] = { -1.0,0.0,0.0 };
 
 int materiaalstang = 0; // Kiezen tussen brons en chroom
 int materiaalkuip = 0;
 int materiaaldak = 0;
+int doorzichtig = 0;
+int mist = 0;
 
 void materiaal_menu(int id)
 {
@@ -117,7 +123,7 @@ void materiaal_menu(int id)
 
 void init(void)
 {
-	glClearColor(0.8, 0.8, 0.8, 0);
+	glClearColor(1, 1, 1, 1);
 	glEnable(GL_DEPTH_TEST);
 
 	// Materiaal menu
@@ -161,13 +167,15 @@ void init(void)
 	glLightfv(GL_LIGHT4, GL_DIFFUSE, ZWART);
 	glLightfv(GL_LIGHT4, GL_AMBIENT, ZWART);
 
-	glMaterialf(GL_FRONT, GL_SHININESS, 127.0);
+	glMaterialf(GL_FRONT, GL_SHININESS, 127);
 
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_DST_ALPHA);
 
 	glDepthFunc(GL_LESS);
-
 	glEnable(GL_NORMALIZE); // Normaliseren van vectoren
+
+	dakelement = gluNewNurbsRenderer();
+	gluNurbsProperty(dakelement, GLU_DISPLAY_MODE, GLU_FILL);
 
 }
 void raam(GLint n_w, GLint n_h)
@@ -210,21 +218,36 @@ void lichten(void)
 	glLightfv(GL_LIGHT4, GL_SPECULAR, GEEL);
 
 
-	glLightf(GL_LIGHT4, GL_SPOT_CUTOFF, lichthoek); //30
-	glLightf(GL_LIGHT4, GL_SPOT_EXPONENT, expo); //20
-	glLightfv(GL_LIGHT4, GL_SPOT_DIRECTION, direc);
+	glLightf(GL_LIGHT4, GL_SPOT_CUTOFF, lichthoek);  // CUTOFF openingshoek kegel
+	glLightf(GL_LIGHT4, GL_SPOT_EXPONENT, expo); // de intensiteit in het midden maximaal en verzwakt naar randen volgens factor cos^a(θ); a 0 - 128 ingesteld worden
+	glLightfv(GL_LIGHT4, GL_SPOT_DIRECTION, direc); // Richting licht
 
 }
+void mistfunctie()
+{
+	glEnable(GL_FOG);
+	if (mist >= 3)
+		glFogi(GL_FOG_MODE, GL_EXP2);
+	if (mist == 2)
+		glFogi(GL_FOG_MODE, GL_EXP);
+	if (mist == 1)
+		glFogi(GL_FOG_MODE, GL_LINEAR);
+	glFogfv(GL_FOG_COLOR, mistkleur);
+	glFogf(GL_FOG_DENSITY, 0.25);
+	glFogf(GL_FOG_START, 0.0); // afstand van oog
+	glFogf(GL_FOG_END, 15);
+}
+
 
 void kuip(GLfloat x, GLfloat y, GLfloat z)
 {
 
 	// Bezier kuip
 	glPushMatrix();
-	glRotated(wiebelhoek, 0, 0, 1); // Wiebel animatie
-	glTranslatef(x + 3.1, y + 3.2 , z + 6.79); 
+	glTranslatef(x + 3.1, y + 3.2 , z + 6.79);
 	glRotated(90, 0, 1, 0);
 	glScaled(5, 5, 5);
+	glRotated(wiebelhoek, 0, 0, 1); // Wiebel animatie
 
 	glMap2f(GL_MAP2_VERTEX_3, 0, 1, 3, 4, 0, 1, 12, 6, &ctrPt[0][0][0]); // laat toe onze Bezier curve te evalueren
 	glEnable(GL_MAP2_VERTEX_3); // Genereren bezier curve
@@ -263,29 +286,17 @@ void kuip(GLfloat x, GLfloat y, GLfloat z)
 	
 }
 
-
 void bevestiging(GLfloat x, GLfloat y, GLfloat z)
 {
-	if (materiaalkuip) {
-		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, KUIPJE_GRIJS_AMBI);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, KUIPJE_GRIJS_DIFF);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, KUIPJE_GRIJS_SPEC);
-	}
-	else {
-		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, KUIPJE_WIT_AMBI);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, KUIPJE_WIT_DIFF);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, KUIPJE_WIT_SPEC);
-	}
-
 	//Staven tekenen
 
 	GLUquadricObj* staaf1;
 	staaf1 = gluNewQuadric();
 
 	glPushMatrix();
-	glRotated(wiebelhoek, 0, 0, 1);
 	glTranslatef(x+0.5 +2.6 ,y+1+2.7,z-0.075+6.29); // y = 2.7 ; z = 6.29 ; x = 2.6
 	glRotated(90, -1, 0, 0);
+	glRotated(wiebelhoek, 0, 1, 0);
 	if (draadmodel)
 	{
 		gluQuadricDrawStyle(staaf1, GLU_LINE);
@@ -298,13 +309,14 @@ void bevestiging(GLfloat x, GLfloat y, GLfloat z)
 	glPopMatrix();
 	gluDeleteQuadric(staaf1);
 
+	// Staaf 2
 	GLUquadricObj* staaf2;
 	staaf2 = gluNewQuadric();
 
 	glPushMatrix();
-	glRotated(wiebelhoek, 0, 0, 1);
 	glTranslatef(x+1.475+2.6,y+1+2.7,z-0.075+6.29);  // y = 2.7 ; z = 6.29 ; x = 2.6
 	glRotated(90, -1, 0, 0);
+	glRotated(wiebelhoek, 0, 1, 0);
 	if (draadmodel)
 	{
 		gluQuadricDrawStyle(staaf2, GLU_LINE);
@@ -317,13 +329,14 @@ void bevestiging(GLfloat x, GLfloat y, GLfloat z)
 	glPopMatrix();
 	gluDeleteQuadric(staaf2);
 
+	// Staaf 3
 	GLUquadricObj* staaf3;
 	staaf3 = gluNewQuadric();
 
 	glPushMatrix();
-	glRotated(wiebelhoek, 0, 0, 1);
 	glTranslatef(x+1.475+2.6,y+1+2.7,z+1.075+6.29); // y = 2.7 ; z = 6.29 ; x = 2.6 
 	glRotated(90, -1, 0, 0);
+	glRotated(wiebelhoek, 0, 1, 0);
 	if (draadmodel)
 	{
 		gluQuadricDrawStyle(staaf3, GLU_LINE);
@@ -336,13 +349,14 @@ void bevestiging(GLfloat x, GLfloat y, GLfloat z)
 	glPopMatrix();
 	gluDeleteQuadric(staaf3);
 
+	// Staaf 4
 	GLUquadricObj* staaf4;
 	staaf4 = gluNewQuadric();
 
 	glPushMatrix();
-	glRotated(wiebelhoek, 0, 0, 1);
 	glTranslatef(x+0.5+2.6,y+1+2.7, z+1.075+6.29); // y = 2.7 ; z = 6.29 ; x = 2.6
 	glRotated(90, -1, 0, 0);
+	glRotated(wiebelhoek, 0, 1, 0);
 	if (draadmodel)
 	{
 		gluQuadricDrawStyle(staaf4, GLU_LINE);
@@ -366,14 +380,15 @@ void bevestiging(GLfloat x, GLfloat y, GLfloat z)
 		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, STANG_BRONS_SPEC);
 	}
 
+	// Staaf 5
 	GLUquadricObj* bevestiging;
 	bevestiging = gluNewQuadric();
 
 	glPushMatrix();
-	glRotated(wiebelhoek, 0, 0, 1);
 	glColor3f(1, 0, 0);
 	glTranslatef(x + 0.99 + 2.6, y + 2.08 +2.7, z + 0.49+6.29); // y = 2.7 ; z = 6.29 ; x = 2.6
 	glRotated(90, -1, 0, 0);
+	glRotated(wiebelhoek, 0, 1, 0);
 	if (draadmodel)
 	{
 		gluQuadricDrawStyle(bevestiging, GLU_LINE);
@@ -391,6 +406,7 @@ void bevestiging(GLfloat x, GLfloat y, GLfloat z)
 
 void dak(void)
 {
+
 	if (materiaaldak) {
 		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, DAK_GEEL_AMBI);
 		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, DAK_GEEL_DIFF);
@@ -491,7 +507,7 @@ void steunbalken(float offsetZ)
 		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, STANG_BRONS_DIFF);
 		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, STANG_BRONS_SPEC);
 	}
-	
+
 	// Steunbalk 1 
 	glPushMatrix();
 	glTranslatef(4, 0.0, 4 + offsetZ);
@@ -561,21 +577,19 @@ void as(float offsetZ)
 
 void as_cylinder(float Offsetz)
 {
-	if (materiaalstang) {
-		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, STANG_CHROOM_AMBI);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, STANG_CHROOM_DIFF);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, STANG_CHROOM_SPEC);
-	}
-	else {
-		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, STANG_BRONS_AMBI);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, STANG_BRONS_DIFF);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, STANG_BRONS_SPEC);
-	}
-
+	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, ZWART);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, oranje);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, GRBLAUW);
+	
 	for (int i = 0; i < 2; i++)
 	{
 		glPushMatrix();
-		glColor3f(0, 0, 0);
+		if (doorzichtig)
+		{
+			glEnable(GL_BLEND);
+			glDepthMask(GL_FALSE);
+			glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);//GL_ONE_MINUS_SRC_ALPHA);
+		}
 		glScalef(1, 1, 1);
 		glTranslatef(3, 1.6, (i * 1.5) + 2.25 + Offsetz);
 		glRotated(hoek, 0, 0, 1);
@@ -587,7 +601,11 @@ void as_cylinder(float Offsetz)
 		{
 			glutSolidTorus(0.1, 1.68, 12, 12);
 		}
-
+		if (doorzichtig)
+		{
+			glDepthMask(GL_TRUE);
+			glDisable(GL_BLEND);
+		}
 		glPopMatrix();
 	}
 }
@@ -723,7 +741,7 @@ void beweeg(void) {
 void wiebel(int delta)
 {
 	if (wiebelen) {
-		wiebelhoek += (delta * wiebelhoek );
+		wiebelhoek += (delta * wiebelhoek * wiebelen);
 		if (abs(hoek) > 20)
 			wiebelhoek = wiebelhoek * -1;
 	}
@@ -751,32 +769,36 @@ void toetsen(unsigned char key, int x, int y)
 	case '3': offsetZ = offsetZ + 0.1; printf("offset=%f\n", offsetZ); break;
 	case '6': offsetZ = offsetZ - 0.1; printf("offset=%f\n", offsetZ); break;
 
-	case 'n': rads++; break;
-	case 'g': draai = !draai; if (draai) { glutIdleFunc(beweeg); }
-			else { glutIdleFunc(NULL); } break;
-	case 'G': wiebelen = !wiebelen; break;
-
-	case 'j': toonassen = !toonassen; break;
-	case 't': teken = !teken; break;
-	case 'l': draadmodel = !draadmodel; break;
-	case 'k': toonctp = !toonctp; break; // y = 2.7 ; z = 6.29 ; x = 2.6
-
-	case 'q': exit(0); break;
 
 	// Lichten
 
-	case 'a': glEnable(GL_LIGHT0); break;
-	case 'A': glDisable(GL_LIGHT0); break;
-	case 'b': glEnable(GL_LIGHT1); break;
-	case 'B': glDisable(GL_LIGHT1); break;
-	case 'c': glEnable(GL_LIGHT2); break;
-	case 'C': glDisable(GL_LIGHT2); break;
-	case 'd': glEnable(GL_LIGHT3); break;
-	case 'D': glDisable(GL_LIGHT3); break;
+	case 'a': glEnable(GL_LIGHT1); break;
+	case 'A': glDisable(GL_LIGHT1); break;
+	case 'b': glEnable(GL_LIGHT2); break;
+	case 'B': glDisable(GL_LIGHT2); break;
+	case 'c': glEnable(GL_LIGHT3); break;
+	case 'C': glDisable(GL_LIGHT3); break;
+	case 'd': glEnable(GL_LIGHT4); break;
+	case 'D': glDisable(GL_LIGHT4); break;
 
+	case 'e': shini += 5.0;      printf("shininess: %f\n", shini);  break;
+	case 'E': shini -= 5.0;      printf("shininess: %f\n", shini);  break;
+	case 'f': doorzichtig = !doorzichtig; printf("doorzichtig=%d", doorzichtig); break;
+	case 'g': draai = !draai; if (draai) { glutIdleFunc(beweeg); }
+			else { glutIdleFunc(NULL); } break;
 
+	case 'G': wiebelen = !wiebelen; break;
 	case 'h': LICHTPOS4[1] += 0.1;      printf("zet eerst 'v' en 'w' juist!");	printf("lichtpositie: %f\n", LICHTPOS4[1]);  break;
 	case 'H': LICHTPOS4[1] -= 0.1;      printf("zet eerst 'v' en 'w' juist!");	printf("lichtpositie: %f\n", LICHTPOS4[1]);  break;
+	case 'j': toonassen = !toonassen; break;
+	case 'k': toonctp = !toonctp; break; // y = 2.7 ; z = 6.29 ; x = 2.6
+	case 'l': draadmodel = !draadmodel; break;
+	case 'n': rads++; break;
+
+	case 'q': exit(0); break;
+	case 's': flat = 1; break;
+	case 'S': flat = 0; break;
+	case 't': teken = !teken; break;
 
 	case 'v': lichthoek -= 5.0;     printf("lichthoek: %f\n", lichthoek);    printf("probeer eens rond 60\n");
 		if (lichthoek > 90.0 && lichthoek < 180.0) lichthoek = 90.0; break;
@@ -785,10 +807,10 @@ void toetsen(unsigned char key, int x, int y)
 	case 'w': expo += 5;     printf("exponent= %f\n", expo); printf("probeer eens rond 5\n"); break;
 	case 'W': expo -= 5;     printf("exponent= %f\n", expo); printf("probeer eens rond 5\n"); break;
 
-	case 's': flat = 1; break;
-	case 'S': flat = 0; break;
 
 	case 'L': toonlightpunten = !toonlightpunten; break;
+	case 'm': mist = !mist; printf("doorzichtig=%d", mist); break;
+	case 'M': mist += 1; printf("doorzichtig=%d", mist); break;
 
 	}
 	printf("oog %lf %lf %lf\n", xc, yc, zc);
@@ -804,8 +826,8 @@ void displayFcn(void)
 	glLoadIdentity();
 	gluLookAt(xc, yc, zc, 4, 2, 4, 0, 1, 0); // Eerst coördinaten waar het oog staat, waar het kijkt en wat boven is.
 
-	glEnable(GL_LIGHTING); 
-	lichten(); 
+	glEnable(GL_LIGHTING);
+	lichten();
 
 	// Elementen oproepen die getekend moeten worden
 
@@ -813,6 +835,11 @@ void displayFcn(void)
 	glShadeModel(flat ? GL_FLAT : GL_SMOOTH);
 
 	teken_assen_lichtbronnen();
+
+	if (mist)
+	{
+		mistfunctie();
+	}
 
 	if (teken) // teken rad
 	{
@@ -832,6 +859,10 @@ void displayFcn(void)
 	glEnable(GL_CLIP_PLANE0);
 	glPopMatrix();
 
+	if (mist)
+	{
+		glDisable(GL_FOG);
+	}
 
 	glutSwapBuffers(); // één buffer om te tekenen en andere doet berekeningen
 	glDisable(GL_LIGHTING);
