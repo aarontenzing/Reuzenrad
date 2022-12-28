@@ -4,17 +4,27 @@
 #include <stdio.h>
 #include <math.h>
 
+// Textures
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#define AANT 3
+#define MAXL 80 
+char beeldnaam[AANT][MAXL] = { "dak.jpg" , "kuip.jpg" , "vloer.jpg"};
+static GLuint texName[AANT];
+int textuur = 0;
+
 // Tekenen
 GLint winWidth = 1000, winHeight = 1000; /* 800*800 pixels */
 int xmax = 5, ymax = 5, xmin = -5, ymin = -5;
 float near = 0.5, far = 400;
 GLdouble xc = 10, yc = 5, zc = 15;
-GLdouble vlak[4] = { 0,1,0,1 };
+GLdouble vlak[4] = { 0,0,0,0 };
 char projectie = 'p';
+GLdouble aspectratio;
 
 float offsetX = 0, offsetY = 0, offsetZ = 0; // Offset dient om structuren te bewegen
-
-int cabines = 6;
+int cabines = 10;
 int rads = 1;
 int draadmodel = 0;
 int eenvoudig = 1;
@@ -23,6 +33,7 @@ int teken = 1;
 int toonassen = 1;
 int toonlightpunten = 0;
 int flat = 0;
+int grens;
 
 // anitmatie
 float draai = 0;
@@ -32,7 +43,7 @@ float wiebelhoek = 0;
 
 int wiebelen = 0;
 int richting = -1;
-float tijd = 10; // 10 ms
+float tijd = 25; // 25 ms
 
 // Afmetingen
 GLfloat ctrPt[6][4][3] =
@@ -89,7 +100,7 @@ GLfloat GROEN[] = { 0.0,1.0,0.0,1.0 };
 GLfloat GRBLAUW[] = { 0.0,0.8,0.9,1.0 };
 GLfloat ROGBRL[] = { 0.4,0.6,0.8,1.0 };
 GLfloat oranje[] = {1, 0.9 ,0.4,1};
-GLfloat mistkleur[4] = { 0.6, 0.5, 0.4, 1 };
+GLfloat mistkleur[4] = { 0.9, 0.9, 0.9, 1 };
 GLfloat shini = 10;
 GLfloat expo = 20.0;
 GLfloat lichthoek = 45;
@@ -100,6 +111,9 @@ int materiaalkuip = 0;
 int materiaaldak = 0;
 int doorzichtig = 0;
 int mist = 0;
+int grond_textuur = 1;
+
+
 
 void materiaal_menu(int id)
 {
@@ -124,7 +138,7 @@ void materiaal_menu(int id)
 
 void init(void)
 {
-	glClearColor(1, 1, 1, 1);
+	glClearColor(0.9, 0.9, 0.9, 1);
 	glEnable(GL_DEPTH_TEST);
 
 	// Materiaal menu
@@ -178,6 +192,33 @@ void init(void)
 	dakelement = gluNewNurbsRenderer();
 	gluNurbsProperty(dakelement, GLU_DISPLAY_MODE, GLU_FILL);
 
+
+	glGenTextures(AANT, texName);
+	for (int i = 0; i < AANT; i++)
+	{
+		int x, y, n;
+		stbi_uc* data = stbi_load(beeldnaam[i], &x, &y, &n, 0);
+		if (data == NULL)
+		{
+			printf("%s niet gevonden\n", beeldnaam[i]);
+			exit(0);
+		}
+		printf("size X is %d en size Y is %d en n %d\n", x, y, n);
+		glBindTexture(GL_TEXTURE_2D, texName[i]);
+		GLint format;
+		switch (n) {
+		case 3: format = GL_RGB;
+			break;
+		case 4: format = GL_RGBA;
+			break;
+		default: printf("Afbeelding niet genoeg componenten per pixel\n");
+			exit(0);
+		}
+		glTexImage2D(GL_TEXTURE_2D, 0, format, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		stbi_image_free(data);
+	}
+
+
 }
 void raam(GLint n_w, GLint n_h)
 {
@@ -193,8 +234,8 @@ void raam(GLint n_w, GLint n_h)
 		gluPerspective(45, (GLdouble)n_w / (GLdouble)n_h, near, far); printf("Perspective\n"); break;
 	case 'o':
 		glOrtho(xmin, xmax, ymin, ymax, near, far);  printf("Ortho\n"); break;
-	case 'f':
-		glFrustum(xmin, xmax, ymin, ymax, near, far);  printf("Frustum\n"); break;
+	case 'f':  grens = near * tan(3.14 * (45.0 / 2.0) / 180.0);
+		glFrustum(-0.5, 0.5, -0.5, 0.5, near, far * 9);  printf("Frustum\n"); break;
 	default: break;
 	}
 
@@ -224,7 +265,7 @@ void lichten(void)
 	glLightfv(GL_LIGHT4, GL_SPOT_DIRECTION, direc); // Richting licht
 
 }
-void mistfunctie()
+void mistfunctie(void)
 {
 	glEnable(GL_FOG);
 	if (mist >= 3)
@@ -249,6 +290,16 @@ void kuip(GLfloat x, GLfloat y, GLfloat z)
 	glRotated(90, 0, 1, 0);
 	glScaled(5, 5, 5);
 	glRotated(wiebelhoek, -1, 0, 0); // Wiebel animatie
+
+	if (textuur) {
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, texName[1]);//1=kuip.jpg
+		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glMap2f(GL_MAP2_TEXTURE_COORD_2, 0, 1, 3, 4, 0, 1, 12, 6, &ctrPt[0][0][0]);
+	}
 
 	glMap2f(GL_MAP2_VERTEX_3, 0, 1, 3, 4, 0, 1, 12, 6, &ctrPt[0][0][0]); // laat toe onze Bezier curve te evalueren
 	glEnable(GL_MAP2_VERTEX_3); // Genereren bezier curve
@@ -282,6 +333,11 @@ void kuip(GLfloat x, GLfloat y, GLfloat z)
 
 		glScaled(-1, 1, 1); // halve kuip spiegelen
 	}
+	if (textuur)
+	{
+		glDisable(GL_TEXTURE_2D);
+	}
+
 	glDisable(GL_MAP2_VERTEX_3);
 	glPopMatrix();
 	
@@ -336,17 +392,26 @@ void dak(void)
 	}
 
 	GLfloat knots[8] = { 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 };
-	for (int k= 0; k < 4; k++)
+	for (int k = 0; k < 4; k++)
 	{
 		glPushMatrix();
 		glScalef(3.8, 3, 3.8);
-		glTranslatef(0.26 + 0.1 * sin(wiebelhoek * 3.14 / 180),0.8 - 0.1 * cos(wiebelhoek * 3.14 / 180), 0.13); //0.26 .7
-		dakelement = gluNewNurbsRenderer();
-		
+		glTranslatef(0.26 + 0.1 * sin(wiebelhoek * 3.14 / 180), 0.8 - 0.1 * cos(wiebelhoek * 3.14 / 180), 0.13); //0.26 .7
+
 		glRotatef(180, 0, 0, 1); // Juist richting dak 
-		glRotated(wiebelhoek, 0, 0, 1); 
+		glRotated(wiebelhoek, 0, 0, 1);
 		glRotatef(45, 0, 1, 0); // Draai naar juiste riching voor bevestiging
 		glRotatef(k * 90, 0, 1, 0); // Dak vier keer geroteerd tekenen rond y-as
+
+		if (textuur)
+		{
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, texName[0]);   //dak.jpg
+			glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		}
 
 		if (toonctp)
 		{
@@ -361,12 +426,14 @@ void dak(void)
 			}
 			glEnd();
 		}
-		gluBeginSurface(dakelement);
+
+		//gluBeginSurface(dakelement);
 		gluNurbsSurface(dakelement, 8, knots, 8, knots, 4 * 3, 3, &bsplineDak[0][0][0], 4, 4, GL_MAP2_VERTEX_3);
 		gluEndSurface(dakelement);
-
-		gluDeleteNurbsRenderer(dakelement);
-
+		if (textuur)
+		{
+			glDisable(GL_TEXTURE_2D);
+		}
 		glPopMatrix();
 	}
 
@@ -483,7 +550,7 @@ void as(float offsetZ)
 	gluDeleteQuadric(as);
 }
 
-void as_cylinder(float Offsetz)
+void schijven(float Offsetz)
 {
 	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, ZWART);
 	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, oranje);
@@ -503,11 +570,11 @@ void as_cylinder(float Offsetz)
 		glRotated(hoek, 0, 0, 1);
 		if (draadmodel)
 		{
-			glutWireTorus(0.1, 1.68, 12, 12); // Inner radius, outer radius, aantal stukken in cross-richting, aantal stukken in radiale richting
+			glutWireTorus(0.09, 1.8, 12, 12); // Inner radius, outer radius, aantal stukken in cross-richting, aantal stukken in radiale richting
 		}
 		else
 		{
-			glutSolidTorus(0.1, 1.68, 12, 12);
+			glutSolidTorus(0.09, 1.8, 12, 12);
 		}
 		if (doorzichtig)
 		{
@@ -650,11 +717,11 @@ void wiebel(int delta)
 {
 	if (wiebelen) {
 		wiebelhoek += (delta * richting ); // else wiebelhoek = 0 
-		if (wiebelhoek > 20)
+		if (wiebelhoek > 15)
 		{
 			richting = -1;
 		}
-		else if (wiebelhoek < -20)
+		else if (wiebelhoek < -15)
 		{
 			richting = 1;
 		}
@@ -681,13 +748,12 @@ void toetsen(unsigned char key, int x, int y)
 	case 'Y': yc--; break;
 	case 'Z': zc--; break;
 
-	case '1': offsetX = offsetX + 0.1; printf("offset=%f\n", offsetX); break;
-	case '4': offsetX = offsetX - 0.1; printf("offset=%f\n", offsetX); break;
-	case '2': offsetY = offsetY + 0.1; printf("offset=%f\n", offsetY); break;
-	case '5': offsetY = offsetY - 0.1; printf("offset=%f\n", offsetY); break;
+	case '1': xc = 8; yc = 4; zc = 8; break;
+	case '4': xc = 5; yc = 8; zc = 5; break;
+	case '2': xc = -10; yc = 0; zc = -12; break;
+	case '5': xc = -15; yc = 3; zc = 3; break;
 	case '3': offsetZ = offsetZ + 0.1; printf("offset=%f\n", offsetZ); break;
 	case '6': offsetZ = offsetZ - 0.1; printf("offset=%f\n", offsetZ); break;
-	
 	case '9': xc = 8; yc = 1; zc = 3; break;
 
 	// Lichten
@@ -718,8 +784,9 @@ void toetsen(unsigned char key, int x, int y)
 	case 'q': exit(0); break;
 	case 's': flat = 1; break;
 	case 'S': flat = 0; break;
-	case 't': teken = !teken; break;
-
+	case 't': textuur = !textuur; break;
+	case 'T': teken = !teken; break;
+	case 'u': grond_textuur = !grond_textuur; break;
 	case 'v': lichthoek -= 5.0;     printf("lichthoek: %f\n", lichthoek);  break;
 	case 'V': lichthoek += 5.0;     printf("lichthoek: %f\n", lichthoek); break;
 	case 'w': expo += 5;     printf("exponent= %f\n", expo);  break;
@@ -764,7 +831,7 @@ void displayFcn(void)
 		for (int i = 0; i > (-rads); i--)
 		{
 			as(4 * i);
-			as_cylinder(4 * i);
+			schijven(4 * i);
 			spaken(4 * i);
 			steunbalken(4 * i);
 			dwarsbalken_cabines(4 * i);
@@ -772,10 +839,32 @@ void displayFcn(void)
 	}
 	
 	glPushMatrix();//clipping plane
-	glTranslatef(0.0, -0.5, 0.0);
+	glTranslatef(0.0, -1, 0.0);
 	glClipPlane(GL_CLIP_PLANE0, vlak);
 	glEnable(GL_CLIP_PLANE0);
 	glPopMatrix();
+
+	if (grond_textuur) {
+
+		glPushMatrix();//vloer
+
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, texName[2]);//2=vloer.jpg
+			glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+
+		glBegin(GL_QUADS);
+			glTexCoord2f(0.0, 0.0);	glVertex3d(-20.0, -0.99, 20.0);
+			glTexCoord2f(0.0, 2.0);	glVertex3d(20.0, -0.99, 20.0);
+			glTexCoord2f(2.0, 2.0);	glVertex3d(20.0, -0.99, -50.0);
+			glTexCoord2f(2.0, 0.0);	glVertex3d(-20.0, -0.99, -50.0);
+		glEnd();
+
+		glDisable(GL_TEXTURE_2D);
+		glPopMatrix();
+	}
 
 	if (mist)
 	{
@@ -807,7 +896,7 @@ int main(int argc, char** argv)
 	glutKeyboardFunc(toetsen);
 	glutReshapeFunc(raam);
 	glutIdleFunc(beweeg);
-	glutTimerFunc(tijd, wiebel, 0.2); 
+	glutTimerFunc(tijd, wiebel, 1);  // 25 ms to pass before calling the callback; wiebel is the timer callback function; 1 integer for callback func
 	glutMainLoop();
 	return 0;
 }
